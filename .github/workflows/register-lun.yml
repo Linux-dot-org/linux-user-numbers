@@ -1,0 +1,54 @@
+name: "Process New LUN PRs"
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  validate_and_merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Get Next LUN Number
+        id: next_lun
+        run: |
+          LAST_LUN=$(jq -r '.last_lun' registry.json)
+          NEXT_LUN=$((LAST_LUN + 1))
+          echo "NEXT_LUN=$NEXT_LUN" >> $GITHUB_ENV
+
+      - name: Validate JSON Structure
+        run: |
+          JSON_FILE=$(ls pending_registrations/*.json | head -n 1)
+          jq empty $JSON_FILE || { echo "Invalid JSON format"; exit 1; }
+
+      - name: Upload to IPFS (Using Pinata)
+        id: ipfs
+        run: |
+          JSON_FILE=$(ls pending_registrations/*.json | head -n 1)
+          RESPONSE=$(curl -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" \
+          -H "pinata_api_key: ${{ secrets.PINATA_API_KEY }}" \
+          -H "pinata_secret_api_key: ${{ secrets.PINATA_SECRET_KEY }}" \
+          -F "file=@$JSON_FILE")
+          CID=$(echo $RESPONSE | jq -r '.IpfsHash')
+          echo "CID=$CID" >> $GITHUB_ENV
+
+      - name: Update Registry JSON
+        run: |
+          jq '.last_lun = $ENV{NEXT_LUN} | .registrations[$ENV{NEXT_LUN}] = $ENV{CID}' registry.json > registry_tmp.json
+          mv registry_tmp.json registry.json
+          rm -f pending_registrations/*.json
+
+      - name: Commit & Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Registered LUN #$NEXT_LUN"
+
+      - name: Auto-Merge PR
+        uses: pascalgn/automerge-action@v0.15.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          merge_method: "squash"
+          delete_branch: true
