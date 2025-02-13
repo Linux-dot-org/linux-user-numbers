@@ -1,5 +1,7 @@
 # Linux User Numbers (LUN)
 
+# WORK IN PROGRESS - this is not live yet.
+
 A public, decentralized system for Linux users to register and verify their unique **Linux User Number (LUN)** using GitHub and IPFS.
 
 Website: [https://lun.linux.org](https://lun.linux.org)
