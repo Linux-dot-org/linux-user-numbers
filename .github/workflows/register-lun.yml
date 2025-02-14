@@ -49,7 +49,8 @@ jobs:
       - name: Update Registry JSON
         run: |
           jq --arg NEXT_LUN "$NEXT_LUN" --arg CID "$CID" \
-            '.last_lun = ($NEXT_LUN | tonumber) | .registrations[$NEXT_LUN] = $CID' registry.json > registry_tmp.json
+            '.last_lun = ($NEXT_LUN | tonumber) | 
+             .registrations += {($NEXT_LUN): $CID}' registry.json > registry_tmp.json
 
           mv registry_tmp.json registry.json
           rm -f pending_registrations/*.json
@@ -58,6 +59,8 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Registered LUN #$NEXT_LUN"
+          branch: main
+          file_pattern: "registry.json"
 
       - name: Auto-Merge PR
         uses: pascalgn/automerge-action@v0.15.5
