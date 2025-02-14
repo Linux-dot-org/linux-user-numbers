@@ -17,26 +17,40 @@ jobs:
           LAST_LUN=$(jq -r '.last_lun' registry.json)
           NEXT_LUN=$((LAST_LUN + 1))
           echo "NEXT_LUN=$NEXT_LUN" >> $GITHUB_ENV
+          echo "Determined NEXT_LUN: $NEXT_LUN"
 
       - name: Validate JSON Structure
         run: |
           JSON_FILE=$(ls pending_registrations/*.json | head -n 1)
-          jq empty $JSON_FILE || { echo "Invalid JSON format"; exit 1; }
+          if [[ ! -f "$JSON_FILE" ]]; then
+            echo "Error: No pending LUN registration file found."
+            exit 1
+          fi
+          jq empty "$JSON_FILE" || { echo "Invalid JSON format"; exit 1; }
 
       - name: Upload to IPFS (Using Pinata)
         id: ipfs
         run: |
           JSON_FILE=$(ls pending_registrations/*.json | head -n 1)
-          RESPONSE=$(curl -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" \
+          RESPONSE=$(curl -s -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" \
           -H "pinata_api_key: ${{ secrets.PINATA_API_KEY }}" \
           -H "pinata_secret_api_key: ${{ secrets.PINATA_SECRET_KEY }}" \
           -F "file=@$JSON_FILE")
-          CID=$(echo $RESPONSE | jq -r '.IpfsHash')
+          
+          CID=$(echo "$RESPONSE" | jq -r '.IpfsHash')
+          if [[ -z "$CID" || "$CID" == "null" ]]; then
+            echo "Error: Failed to upload to IPFS. Response: $RESPONSE"
+            exit 1
+          fi
+          
           echo "CID=$CID" >> $GITHUB_ENV
+          echo "Uploaded to IPFS: $CID"
 
       - name: Update Registry JSON
         run: |
-          jq '.last_lun = $ENV{NEXT_LUN} | .registrations[$ENV{NEXT_LUN}] = $ENV{CID}' registry.json > registry_tmp.json
+          jq --arg NEXT_LUN "$NEXT_LUN" --arg CID "$CID" \
+            '.last_lun = ($NEXT_LUN | tonumber) | .registrations[$NEXT_LUN] = $CID' registry.json > registry_tmp.json
+
           mv registry_tmp.json registry.json
           rm -f pending_registrations/*.json
 
