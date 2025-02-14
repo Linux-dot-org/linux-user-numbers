@@ -86,13 +86,13 @@ This creates:
 If you want to prove you own a LUN, you can sign a message using your private key:
 
 ```sh
-echo "I own LUN #1234" | openssl dgst -sha256 -sign lun_private.pem -out signature.bin
+echo "I confirm ownership of LUN #1234 on lun.linux.org" | openssl dgst -sha256 -sign lun_private.pem | base64
 ```
 
 To verify a signature:
 
 ```sh
-echo "I own LUN #1234" | openssl dgst -sha256 -verify lun_public.pem -signature signature.bin
+echo "I confirm ownership of LUN #1234 on lun.linux.org" | openssl dgst -sha256 -verify lun_public.pem -signature <(echo -n "PASTE_BASE64_SIGNATURE_HERE" | base64 -d)
 ```
 
 This allows others to **verify your ownership** of a registered LUN.
