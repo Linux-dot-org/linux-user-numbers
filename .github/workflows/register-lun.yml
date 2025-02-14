@@ -15,6 +15,12 @@ jobs:
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
+
+          # Ensure the remote origin is correctly set
+          if ! git remote | grep -q origin; then
+            git remote add origin https://github.com/${{ github.repository }}.git
+          fi
+
           git fetch --prune
           git reset --hard origin/main
           git pull --rebase origin/main
