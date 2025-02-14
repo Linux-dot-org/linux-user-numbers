@@ -58,12 +58,17 @@ jobs:
           mv registry_tmp.json registry.json
           rm -f pending_registrations/*.json
 
-      - name: Commit & Push Changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Registered LUN #$NEXT_LUN"
-          branch: main
-          file_pattern: "registry.json"
+      - name: Stage & Commit Changes
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add registry.json
+          git commit -m "Registered LUN #$NEXT_LUN" || echo "No changes to commit"
+
+      - name: Push Changes
+        run: |
+          git pull --rebase
+          git push
 
       - name: Auto-Merge PR
         uses: pascalgn/automerge-action@v0.15.5
