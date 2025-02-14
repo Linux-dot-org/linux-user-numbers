@@ -11,6 +11,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Ensure Clean State (Reset & Pull)
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git fetch --prune
+          git reset --hard origin/main
+          git pull --rebase origin/main
+
       - name: Get Next LUN Number
         id: next_lun
         run: |
@@ -58,17 +66,11 @@ jobs:
           mv registry_tmp.json registry.json
           rm -f pending_registrations/*.json
 
-      - name: Stage & Commit Changes
+      - name: Commit & Push Changes
         run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
           git add registry.json
           git commit -m "Registered LUN #$NEXT_LUN" || echo "No changes to commit"
-
-      - name: Push Changes
-        run: |
-          git pull --rebase
-          git push
+          git push --force origin main
 
       - name: Auto-Merge PR
         uses: pascalgn/automerge-action@v0.15.5
