@@ -11,19 +11,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Ensure Clean State (Reset & Pull)
+      - name: Configure Git User
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
-
-          # Ensure the remote origin is correctly set
-          if ! git remote | grep -q origin; then
-            git remote add origin https://github.com/${{ github.repository }}.git
-          fi
-
-          git fetch --prune
-          git reset --hard origin/main
-          git pull --rebase origin/main
 
       - name: Get Next LUN Number
         id: next_lun
@@ -60,6 +51,10 @@ jobs:
           echo "CID=$CID" >> $GITHUB_ENV
           echo "Uploaded to IPFS: $CID"
 
+      - name: Pull Latest Registry (Avoid Merge Conflicts)
+        run: |
+          git pull origin main
+
       - name: Update Registry JSON
         run: |
           jq --arg NEXT_LUN "$NEXT_LUN" --arg CID "$CID" \
@@ -76,7 +71,7 @@ jobs:
         run: |
           git add registry.json
           git commit -m "Registered LUN #$NEXT_LUN" || echo "No changes to commit"
-          git push --force origin main
+          git push origin main
 
       - name: Auto-Merge PR
         uses: pascalgn/automerge-action@v0.15.5
