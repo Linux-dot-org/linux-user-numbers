@@ -49,8 +49,11 @@ jobs:
       - name: Update Registry JSON
         run: |
           jq --arg NEXT_LUN "$NEXT_LUN" --arg CID "$CID" \
-            '.last_lun = ($NEXT_LUN | tonumber) | 
-             .registrations += {($NEXT_LUN): $CID}' registry.json > registry_tmp.json
+            'if .registrations | type == "array" 
+             then .registrations = {} 
+             else . end 
+             | .last_lun = ($NEXT_LUN | tonumber) 
+             | .registrations[$NEXT_LUN] = $CID' registry.json > registry_tmp.json
 
           mv registry_tmp.json registry.json
           rm -f pending_registrations/*.json
