@@ -83,19 +83,36 @@ This creates:
 
 ## 🔹 How to Verify Ownership
 
-If you want to prove you own a LUN, you can sign a message using your private key:
+If someone claims to own a LUN, you can verify their ownership using the official registry.
 
-```sh
-echo "I confirm ownership of LUN #1234 on lun.linux.org" | openssl dgst -sha256 -sign lun_private.pem | base64
-```
+### Step 1: The LUN Owner Signs a Message
+The LUN owner generates a signed proof using their private key:
 
-To verify a signature:
+    echo "I confirm ownership of LUN #1234 on lun.linux.org" | openssl dgst -sha256 -sign lun_private.pem | base64
 
-```sh
-echo "I confirm ownership of LUN #1234 on lun.linux.org" | openssl dgst -sha256 -verify lun_public.pem -signature <(echo -n "PASTE_BASE64_SIGNATURE_HERE" | base64 -d)
-```
+This outputs a **Base64-encoded signature**, which the owner should share publicly.
 
-This allows others to **verify your ownership** of a registered LUN.
+### Step 2: The Verifier Fetches the Latest Registry
+The verifier must retrieve the latest LUN registry from GitHub:
+
+    curl -s -o registry.json https://raw.githubusercontent.com/Linux-dot-org/linux-user-numbers/main/registry.json
+
+If GitHub is unavailable, they should use the latest IPFS-pinned version.
+
+### Step 3: Extract the Public Key
+The verifier extracts the registered public key for LUN #1234:
+
+    jq -r ".registrations[\"1234\"].public_key" registry.json
+
+This ensures they are checking against the correct owner’s public key.
+
+### Step 4: Verify the Signature
+The verifier checks the signature against the registered public key:
+
+    echo "I confirm ownership of LUN #1234 on lun.linux.org" | openssl dgst -sha256 -verify <(jq -r ".registrations[\"1234\"].public_key" registry.json) -signature <(echo -n "PASTE_BASE64_SIGNATURE_HERE" | base64 -d)
+
+If the output is `Verified OK`, the person **truly owns the LUN**. If verification fails, the signature is either invalid or the claim is false.
+
 
 ---
 
